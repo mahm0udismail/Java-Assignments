@@ -12,6 +12,11 @@ public class Book {
         this.loanDate = loanDate;
     }
 
+    public Book(String id) {
+        this.id = id;
+        this.loanDate = LocalDateTime.now();
+    }
+
     public String getId() {
         return id;
     }
