@@ -8,6 +8,10 @@ import java.util.Set;
 public class LoanService {
     private final LoanRepository repository;
 
+    public LoanService() {
+        this.repository = new LoanRepository();
+    }
+
     public LoanService(LoanRepository repository) {
         this.repository = repository;
     }
