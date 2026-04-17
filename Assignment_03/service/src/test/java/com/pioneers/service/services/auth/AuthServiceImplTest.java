@@ -1,7 +1,8 @@
 package com.pioneers.service.services.auth;
 
-import com.pioneers.service.error.exceptions.CredentialsException;
 import com.pioneers.service.error.exceptions.LoginException;
+import com.pioneers.service.error.exceptions.LogoutException;
+import com.pioneers.service.error.exceptions.NotFoundException;
 import com.pioneers.service.error.exceptions.RegisterException;
 import com.pioneers.service.model.dtos.requests.StudentLogin;
 import com.pioneers.service.model.dtos.requests.StudentSignup;
@@ -19,6 +20,7 @@ import java.sql.Timestamp;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -38,7 +40,7 @@ class AuthServiceImplTest {
 
         StudentSignup signup = new StudentSignup(
                 "Mahmoud",
-                "Ahmed",
+                "Ismail",
                 "test@test.com",
                 20,
                 "+201001234567",
@@ -68,7 +70,7 @@ class AuthServiceImplTest {
 
         StudentSignup signup = new StudentSignup(
                 "Mahmoud",
-                "Ahmed",
+                "Ismail",
                 "test@test.com",
                 20,
                 "+201001234567",
@@ -93,7 +95,7 @@ class AuthServiceImplTest {
 
         StudentSignup signup = new StudentSignup(
                 "Mahmoud",
-                "Ahmed",
+                "Ismail",
                 "test@test.com",
                 20,
                 "+201001234567",
@@ -117,14 +119,14 @@ class AuthServiceImplTest {
     // ---------------- loginStudent ----------------
     // ---------------- SUCCESS CASE ----------------
     @Test
-    void testLoginStudentWhenValidCredentialsThenLoginSuccessful(){
+    void testLoginStudentWhenValidCredentialsThenLoginSuccessful() {
         StudentLogin studentLogin = new StudentLogin(
                 "test@test.com",
                 "Password@123"
         );
         Student student = Student.builder()
                 .id("12345")
-                .fullName("Mahmoud Ahmed")
+                .fullName("Mahmoud Ismail")
                 .email("test@test.com")
                 .phone("+201001234567")
                 .password("hashedPassword123")
@@ -147,4 +149,108 @@ class AuthServiceImplTest {
         }
 
     }
+
+    // ---------------- EMAIL Not Registered ----------------
+    @Test
+    void testLoginStudentWhenEmailNotRegisteredThrowsLoginException() {
+
+        StudentLogin studentLogin = new StudentLogin("notfound@test.com", "Password@123");
+        when(studentRepository.findByEmail("notfound@test.com")).thenReturn(Optional.empty());
+
+        LoginException exception = assertThrows(LoginException.class, () -> authService.loginStudent(studentLogin));
+
+        assertEquals("Student with email notfound@test.com is not registered", exception.getMessage());
+
+        verify(studentRepository).findByEmail("notfound@test.com");
+    }
+
+    // ---------------- Password Incorrect ----------------
+    @Test
+    void testLoginStudentWhenPasswordIncorrectThrowsLoginException() {
+        StudentLogin studentLogin = new StudentLogin("test@test.com", "WrongPassword@123");
+
+        Student student = Student.builder()
+                .id("12345")
+                .fullName("Mahmoud Ismail")
+                .email("test@test.com")
+                .phone("+201001234567")
+                .password("hashedPassword123")
+                .isLogin(false)
+                .lastLoginAt(new Timestamp(System.currentTimeMillis()))
+                .build();
+
+        when(studentRepository.findByEmail("test@test.com")).thenReturn(Optional.of(student));
+
+        try (MockedStatic<CredentialsHelper> mocked = mockStatic(CredentialsHelper.class)) {
+
+            mocked.when(() -> CredentialsHelper.verifyPassword("WrongPassword@123", "hashedPassword123")).thenReturn(false);
+
+            LoginException exception = assertThrows(LoginException.class, () -> authService.loginStudent(studentLogin));
+
+            assertEquals("Email or password incorrect", exception.getMessage());
+        }
+    }
+
+    // ---------------- logoutStudent ----------------
+    // ---------------- SUCCESS CASE ----------------
+    @Test
+    void testLogoutStudentWhenValidIdThenLogoutSuccessful() {
+        String studentId = "12345";
+
+        Student student = Student.builder()
+                .id("12345")
+                .fullName("Mahmoud Ismail")
+                .email("test@test.com")
+                .phone("+201001234567")
+                .password("hashedPassword123")
+                .isLogin(true)
+                .lastLoginAt(new Timestamp(System.currentTimeMillis()))
+                .build();
+
+        when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
+
+        authService.logoutStudent(studentId);
+
+        assertFalse(student.isLogin());
+
+    }
+
+    // ---------------- Student Not Found ----------------
+    @Test
+    void testLogoutStudentWhenStudentNotFoundThrowsNotFoundException() {
+
+        String studentId = "99999";
+
+        when(studentRepository.findById(studentId)).thenReturn(Optional.empty());
+
+        NotFoundException exception = assertThrows(
+            NotFoundException.class, 
+            () -> authService.logoutStudent(studentId)
+        );
+
+        assertEquals("Student with id: 99999 not found", exception.getMessage());
+    }
+
+    // ---------------- Student already logged out ----------------
+    @Test
+    void logoutStudent_WhenStudentAlreadyLoggedOut_ThrowsLogoutException() {
+
+        String studentId = "12345";
+
+        Student student = Student.builder()
+                .id(studentId)
+                .fullName("Mahmoud Ismail")
+                .email("test@test.com")
+                .phone("+201001234567")
+                .password("hashedPassword123")
+                .isLogin(false)
+                .build();
+
+        when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
+
+        LogoutException exception = assertThrows(LogoutException.class, () -> authService.logoutStudent(studentId));
+
+        assertEquals("Student with id: 12345 is not login", exception.getMessage());
+    }
+
 }
