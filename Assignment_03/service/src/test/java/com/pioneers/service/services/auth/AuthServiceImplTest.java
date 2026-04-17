@@ -155,9 +155,13 @@ class AuthServiceImplTest {
     void testLoginStudentWhenEmailNotRegisteredThrowsLoginException() {
 
         StudentLogin studentLogin = new StudentLogin("notfound@test.com", "Password@123");
-        when(studentRepository.findByEmail("notfound@test.com")).thenReturn(Optional.empty());
+        when(studentRepository.findByEmail("notfound@test.com"))
+                .thenReturn(Optional.empty());
 
-        LoginException exception = assertThrows(LoginException.class, () -> authService.loginStudent(studentLogin));
+        LoginException exception = assertThrows(
+                LoginException.class,
+                () -> authService.loginStudent(studentLogin)
+        );
 
         assertEquals("Student with email notfound@test.com is not registered", exception.getMessage());
 
@@ -179,11 +183,17 @@ class AuthServiceImplTest {
                 .lastLoginAt(new Timestamp(System.currentTimeMillis()))
                 .build();
 
-        when(studentRepository.findByEmail("test@test.com")).thenReturn(Optional.of(student));
+        when(studentRepository.findByEmail("test@test.com"))
+                .thenReturn(Optional.of(student));
 
         try (MockedStatic<CredentialsHelper> mocked = mockStatic(CredentialsHelper.class)) {
 
-            mocked.when(() -> CredentialsHelper.verifyPassword("WrongPassword@123", "hashedPassword123")).thenReturn(false);
+            mocked.when(
+                    () -> CredentialsHelper.verifyPassword(
+                            "WrongPassword@123",
+                            "hashedPassword123"
+                    )
+            ).thenReturn(false);
 
             LoginException exception = assertThrows(LoginException.class, () -> authService.loginStudent(studentLogin));
 
@@ -207,7 +217,8 @@ class AuthServiceImplTest {
                 .lastLoginAt(new Timestamp(System.currentTimeMillis()))
                 .build();
 
-        when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
+        when(studentRepository.findById(studentId))
+                .thenReturn(Optional.of(student));
 
         authService.logoutStudent(studentId);
 
@@ -224,8 +235,8 @@ class AuthServiceImplTest {
         when(studentRepository.findById(studentId)).thenReturn(Optional.empty());
 
         NotFoundException exception = assertThrows(
-            NotFoundException.class, 
-            () -> authService.logoutStudent(studentId)
+                NotFoundException.class,
+                () -> authService.logoutStudent(studentId)
         );
 
         assertEquals("Student with id: 99999 not found", exception.getMessage());
@@ -248,7 +259,10 @@ class AuthServiceImplTest {
 
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
 
-        LogoutException exception = assertThrows(LogoutException.class, () -> authService.logoutStudent(studentId));
+        LogoutException exception = assertThrows(
+                LogoutException.class,
+                () -> authService.logoutStudent(studentId)
+        );
 
         assertEquals("Student with id: 12345 is not login", exception.getMessage());
     }
