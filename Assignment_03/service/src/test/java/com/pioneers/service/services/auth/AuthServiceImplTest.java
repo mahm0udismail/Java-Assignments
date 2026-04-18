@@ -10,6 +10,7 @@ import com.pioneers.service.model.entities.Student;
 import com.pioneers.service.repositories.students.StudentRepository;
 import com.pioneers.service.utils.CredentialsHelper;
 import com.pioneers.service.utils.time.TimeHelper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -32,13 +33,13 @@ class AuthServiceImplTest {
     @InjectMocks
     private AuthServiceImpl authService;
 
-    // ---------------- RegisterStudent ----------------
-    // ---------------- SUCCESS CASE ----------------
+    private StudentSignup signup;
+    private Student loggedOutStudent;
+    private Student loggedInStudent;
 
-    @Test
-    void testRegisterStudentWhenEmailAndPhoneNotExistThenStudentRegisteredSuccessfully() {
-
-        StudentSignup signup = new StudentSignup(
+    @BeforeEach
+    void setUp() {
+        signup = new StudentSignup(
                 "Mahmoud",
                 "Ismail",
                 "test@test.com",
@@ -46,6 +47,33 @@ class AuthServiceImplTest {
                 "+201001234567",
                 "Password@123"
         );
+
+        loggedOutStudent = Student.builder()
+                .id("12345")
+                .fullName("Mahmoud Ismail")
+                .email("test@test.com")
+                .phone("+201001234567")
+                .password("hashedPassword123")
+                .isLogin(false)
+                .lastLoginAt(null)
+                .build();
+
+        loggedInStudent = Student.builder()
+                .id("12345")
+                .fullName("Mahmoud Ismail")
+                .email("test@test.com")
+                .phone("+201001234567")
+                .password("hashedPassword123")
+                .isLogin(true)
+                .lastLoginAt(TimeHelper.currentTimestamp())
+                .build();
+    }
+
+    // ---------------- RegisterStudent ----------------
+    // ---------------- SUCCESS CASE ----------------
+
+    @Test
+    void testRegisterStudentWhenEmailAndPhoneNotExistThenStudentRegisteredSuccessfully() {
 
         when(studentRepository.findByEmail("test@test.com"))
                 .thenReturn(Optional.empty());
@@ -68,15 +96,6 @@ class AuthServiceImplTest {
     @Test
     void testRegisterStudentWhenEmailAlreadyExistsThenThrowRegisterException() {
 
-        StudentSignup signup = new StudentSignup(
-                "Mahmoud",
-                "Ismail",
-                "test@test.com",
-                20,
-                "+201001234567",
-                "Password@123"
-        );
-
         when(studentRepository.findByEmail("test@test.com"))
                 .thenReturn(Optional.of(mock(Student.class)));
 
@@ -86,21 +105,13 @@ class AuthServiceImplTest {
         );
 
         assertEquals("Email is already used in system", ex.getMessage());
+        verify(studentRepository).findByEmail("test@test.com");
         verify(studentRepository, never()).save(any());
     }
 
     // ---------------- PHONE EXISTS ----------------
     @Test
     void testRegisterStudentWhenPhoneAlreadyExistsThenThrowRegisterException() {
-
-        StudentSignup signup = new StudentSignup(
-                "Mahmoud",
-                "Ismail",
-                "test@test.com",
-                20,
-                "+201001234567",
-                "Password@123"
-        );
 
         when(studentRepository.findByEmail("test@test.com"))
                 .thenReturn(Optional.empty());
@@ -112,34 +123,23 @@ class AuthServiceImplTest {
                 RegisterException.class,
                 () -> authService.registerStudent(signup)
         );
-        assertEquals("Phone is already used in system", ex.getMessage());
 
+        assertEquals("Phone is already used in system", ex.getMessage());
+        verify(studentRepository).findByEmail("test@test.com");
+        verify(studentRepository).findByPhone("+201001234567");
         verify(studentRepository, never()).save(any());
     }
 
-    // ---------------- loginStudent ----------------
+    // ================ loginStudent ================
     // ---------------- SUCCESS CASE ----------------
     @Test
     void testLoginStudentWhenValidCredentialsThenLoginSuccessful() {
-        StudentLogin studentLogin = new StudentLogin(
-                "test@test.com",
-                "Password@123"
-        );
-        Student student = Student.builder()
-                .id("12345")
-                .fullName("Mahmoud Ismail")
-                .email("test@test.com")
-                .phone("+201001234567")
-                .password("hashedPassword123")
-                .isLogin(false)
-                .lastLoginAt(null)
-                .build();
+        StudentLogin studentLogin = new StudentLogin("test@test.com", "Password@123");
 
         when(studentRepository.findByEmail("test@test.com"))
-                .thenReturn(Optional.of(student));
+                .thenReturn(Optional.of(loggedOutStudent));
 
         try (MockedStatic<CredentialsHelper> mocked = mockStatic(CredentialsHelper.class)) {
-
             mocked.when(() ->
                     CredentialsHelper.verifyPassword("Password@123", "hashedPassword123")
             ).thenReturn(true);
@@ -147,19 +147,18 @@ class AuthServiceImplTest {
             String result = authService.loginStudent(studentLogin);
 
             assertEquals("Login successful", result);
-
-            assertTrue(student.isLogin());
-
-            assertNotNull(student.getLastLoginAt());
+            assertTrue(loggedOutStudent.isLogin());
+            assertNotNull(loggedOutStudent.getLastLoginAt());
+            verify(studentRepository).findByEmail("test@test.com");
         }
-
     }
 
-    // ---------------- EMAIL Not Registered ----------------
+    // ---------------- EMAIL NOT REGISTERED ----------------
+
     @Test
     void testLoginStudentWhenEmailNotRegisteredThrowsLoginException() {
-
         StudentLogin studentLogin = new StudentLogin("notfound@test.com", "Password@123");
+
         when(studentRepository.findByEmail("notfound@test.com"))
                 .thenReturn(Optional.empty());
 
@@ -169,60 +168,44 @@ class AuthServiceImplTest {
         );
 
         assertEquals("Student with email notfound@test.com is not registered", exception.getMessage());
-
         verify(studentRepository).findByEmail("notfound@test.com");
     }
 
-    // ---------------- Password Incorrect ----------------
+    // ---------------- PASSWORD INCORRECT ----------------
+
     @Test
     void testLoginStudentWhenPasswordIncorrectThrowsLoginException() {
         StudentLogin studentLogin = new StudentLogin("test@test.com", "WrongPassword@123");
 
-        Student student = Student.builder()
-                .id("12345")
-                .fullName("Mahmoud Ismail")
-                .email("test@test.com")
-                .phone("+201001234567")
-                .password("hashedPassword123")
-                .isLogin(false)
-                .lastLoginAt(TimeHelper.currentTimestamp())
-                .build();
-
         when(studentRepository.findByEmail("test@test.com"))
-                .thenReturn(Optional.of(student));
+                .thenReturn(Optional.of(loggedOutStudent));
 
         try (MockedStatic<CredentialsHelper> mocked = mockStatic(CredentialsHelper.class)) {
-
-            mocked.when(
-                    () -> CredentialsHelper.verifyPassword(
+            mocked.when(() ->
+                    CredentialsHelper.verifyPassword(
                             "WrongPassword@123",
                             "hashedPassword123"
                     )
             ).thenReturn(false);
 
-            LoginException exception = assertThrows(LoginException.class, () -> authService.loginStudent(studentLogin));
+            LoginException exception = assertThrows(
+                    LoginException.class,
+                    () -> authService.loginStudent(studentLogin)
+            );
 
             assertEquals("Email or password incorrect", exception.getMessage());
+            verify(studentRepository).findByEmail("test@test.com");
         }
     }
 
-    // ---------------- Student already logged in ----------------
+    // ---------------- ALREADY LOGGED IN ----------------
+
     @Test
     void testLoginStudentWhenAlreadyLoggedInThenThrowsLoginException() {
         StudentLogin studentLogin = new StudentLogin("test@test.com", "Password@123");
 
-        Student student = Student.builder()
-                .id("12345")
-                .fullName("Mahmoud Ismail")
-                .email("test@test.com")
-                .phone("+201001234567")
-                .password("hashedPassword123")
-                .isLogin(true)
-                .lastLoginAt(TimeHelper.currentTimestamp())
-                .build();
-
         when(studentRepository.findByEmail("test@test.com"))
-                .thenReturn(Optional.of(student));
+                .thenReturn(Optional.of(loggedInStudent));
 
         LoginException exception = assertThrows(
                 LoginException.class,
@@ -230,37 +213,29 @@ class AuthServiceImplTest {
         );
 
         assertEquals("Student with email: test@test.com is already login", exception.getMessage());
+        verify(studentRepository).findByEmail("test@test.com");
     }
 
-    // ---------------- logoutStudent ----------------
+    // ================ logoutStudent ================
     // ---------------- SUCCESS CASE ----------------
+
     @Test
     void testLogoutStudentWhenValidIdThenLogoutSuccessful() {
         String studentId = "12345";
 
-        Student student = Student.builder()
-                .id("12345")
-                .fullName("Mahmoud Ismail")
-                .email("test@test.com")
-                .phone("+201001234567")
-                .password("hashedPassword123")
-                .isLogin(true)
-                .lastLoginAt(TimeHelper.currentTimestamp())
-                .build();
-
         when(studentRepository.findById(studentId))
-                .thenReturn(Optional.of(student));
+                .thenReturn(Optional.of(loggedInStudent));
 
         authService.logoutStudent(studentId);
 
-        assertFalse(student.isLogin());
-
+        assertFalse(loggedInStudent.isLogin());
+        verify(studentRepository).findById(studentId);
     }
 
-    // ---------------- Student Not Found ----------------
+    // ---------------- STUDENT NOT FOUND ----------------
+
     @Test
     void testLogoutStudentWhenStudentNotFoundThrowsNotFoundException() {
-
         String studentId = "99999";
 
         when(studentRepository.findById(studentId)).thenReturn(Optional.empty());
@@ -271,24 +246,17 @@ class AuthServiceImplTest {
         );
 
         assertEquals("Student with id: 99999 not found", exception.getMessage());
+        verify(studentRepository).findById(studentId);
     }
 
-    // ---------------- Student already logged out ----------------
-    @Test
-    void logoutStudent_WhenStudentAlreadyLoggedOut_ThrowsLogoutException() {
+    // ---------------- ALREADY LOGGED OUT ----------------
 
+    @Test
+    void testLogoutStudentWhenAlreadyLoggedOutThrowsLogoutException() {
         String studentId = "12345";
 
-        Student student = Student.builder()
-                .id(studentId)
-                .fullName("Mahmoud Ismail")
-                .email("test@test.com")
-                .phone("+201001234567")
-                .password("hashedPassword123")
-                .isLogin(false)
-                .build();
-
-        when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
+        when(studentRepository.findById(studentId))
+                .thenReturn(Optional.of(loggedOutStudent));
 
         LogoutException exception = assertThrows(
                 LogoutException.class,
@@ -296,6 +264,6 @@ class AuthServiceImplTest {
         );
 
         assertEquals("Student with id: 12345 is not login", exception.getMessage());
+        verify(studentRepository).findById(studentId);
     }
-
 }
