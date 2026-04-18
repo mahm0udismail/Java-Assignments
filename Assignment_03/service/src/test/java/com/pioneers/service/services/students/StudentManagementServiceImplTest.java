@@ -12,13 +12,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -54,15 +53,16 @@ class StudentManagementServiceImplTest {
 
     // ================ findAll ================
     // ---------------- SUCCESS CASE ----------------
+
     @Test
     void testFindAllWhenStudentsExistThenReturnStudentInfoList() {
         when(studentRepository.findAll()).thenReturn(List.of(student));
 
         List<StudentInfo> result = studentManagementService.findAll();
 
-        assertNotNull(result);
         assertEquals(1, result.size());
         assertEquals(expectedStudentInfo, result.getFirst());
+        verify(studentRepository).findAll();
     }
 
     // ---------------- EMPTY LIST ----------------
@@ -73,8 +73,8 @@ class StudentManagementServiceImplTest {
 
         List<StudentInfo> result = studentManagementService.findAll();
 
-        assertNotNull(result);
         assertTrue(result.isEmpty());
+        verify(studentRepository).findAll();
     }
 
     // ================ findFirstRegisteredStudent ================
@@ -87,6 +87,7 @@ class StudentManagementServiceImplTest {
         StudentInfo result = studentManagementService.findFirstRegisteredStudent();
 
         assertEquals(expectedStudentInfo, result);
+        verify(studentRepository).findFirstRegistered();
     }
 
     // ---------------- NOT FOUND ----------------
@@ -101,6 +102,7 @@ class StudentManagementServiceImplTest {
         );
 
         assertEquals("There is no registered student", exception.getMessage());
+        verify(studentRepository).findFirstRegistered();
     }
 
     // ================ findLastLoginStudentsByMinute ================
@@ -114,6 +116,7 @@ class StudentManagementServiceImplTest {
 
         assertEquals(1, result.size());
         assertEquals(expectedStudentInfo, result.getFirst());
+        verify(studentRepository).findLastLoggedInWithMin(10);
     }
 
     // ---------------- EMPTY LIST ----------------
@@ -125,6 +128,7 @@ class StudentManagementServiceImplTest {
         List<StudentInfo> result = studentManagementService.findLastLoginStudentsByMinute(10);
 
         assertTrue(result.isEmpty());
+        verify(studentRepository).findLastLoggedInWithMin(10);
     }
 
     // ================ findLastLoginStudent ================
@@ -137,6 +141,7 @@ class StudentManagementServiceImplTest {
         StudentInfo result = studentManagementService.findLastLoginStudent();
 
         assertEquals(expectedStudentInfo, result);
+        verify(studentRepository).findLastLoggedIn();
     }
 
     // ---------------- NOT FOUND ----------------
@@ -151,6 +156,7 @@ class StudentManagementServiceImplTest {
         );
 
         assertEquals("There is no logged-in student", exception.getMessage());
+        verify(studentRepository).findLastLoggedIn();
     }
 
     // ================ deleteAll ================
