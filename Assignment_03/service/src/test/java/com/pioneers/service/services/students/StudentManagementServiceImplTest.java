@@ -56,7 +56,8 @@ class StudentManagementServiceImplTest {
 
     @Test
     void testFindAllWhenStudentsExistThenReturnStudentInfoList() {
-        when(studentRepository.findAll()).thenReturn(List.of(student));
+        when(studentRepository.findAll())
+                .thenReturn(List.of(student));
 
         List<StudentInfo> result = studentManagementService.findAll();
 
@@ -69,7 +70,8 @@ class StudentManagementServiceImplTest {
 
     @Test
     void testFindAllWhenNoStudentsExistThenReturnEmptyList() {
-        when(studentRepository.findAll()).thenReturn(Collections.emptyList());
+        when(studentRepository.findAll())
+                .thenReturn(Collections.emptyList());
 
         List<StudentInfo> result = studentManagementService.findAll();
 
@@ -82,7 +84,8 @@ class StudentManagementServiceImplTest {
 
     @Test
     void testFindFirstRegisteredStudentWhenExistsThenReturnStudentInfo() {
-        when(studentRepository.findFirstRegistered()).thenReturn(Optional.of(student));
+        when(studentRepository.findFirstRegistered())
+                .thenReturn(Optional.of(student));
 
         StudentInfo result = studentManagementService.findFirstRegisteredStudent();
 
@@ -94,7 +97,8 @@ class StudentManagementServiceImplTest {
 
     @Test
     void testFindFirstRegisteredStudentWhenNotExistsThenThrowNotFoundException() {
-        when(studentRepository.findFirstRegistered()).thenReturn(Optional.empty());
+        when(studentRepository.findFirstRegistered())
+                .thenReturn(Optional.empty());
 
         NotFoundException exception = assertThrows(
                 NotFoundException.class,
@@ -123,7 +127,8 @@ class StudentManagementServiceImplTest {
 
     @Test
     void testFindLastLoginStudentsByMinuteWhenNoStudentsFoundThenReturnEmptyList() {
-        when(studentRepository.findLastLoggedInWithMin(10)).thenReturn(Collections.emptyList());
+        when(studentRepository.findLastLoggedInWithMin(10))
+                .thenReturn(Collections.emptyList());
 
         List<StudentInfo> result = studentManagementService.findLastLoginStudentsByMinute(10);
 
@@ -136,7 +141,8 @@ class StudentManagementServiceImplTest {
 
     @Test
     void testFindLastLoginStudentWhenExistsThenReturnStudentInfo() {
-        when(studentRepository.findLastLoggedIn()).thenReturn(Optional.of(student));
+        when(studentRepository.findLastLoggedIn())
+                .thenReturn(Optional.of(student));
 
         StudentInfo result = studentManagementService.findLastLoginStudent();
 
@@ -148,7 +154,8 @@ class StudentManagementServiceImplTest {
 
     @Test
     void testFindLastLoginStudentWhenNotExistsThenThrowNotFoundException() {
-        when(studentRepository.findLastLoggedIn()).thenReturn(Optional.empty());
+        when(studentRepository.findLastLoggedIn())
+                .thenReturn(Optional.empty());
 
         NotFoundException exception = assertThrows(
                 NotFoundException.class,
@@ -195,7 +202,8 @@ class StudentManagementServiceImplTest {
                 "+201109876543"
         );
 
-        when(studentRepository.findById("12345")).thenReturn(Optional.of(student));
+        when(studentRepository.findById("12345"))
+                .thenReturn(Optional.of(student));
         doNothing().when(studentRepository).update(any(Student.class));
 
         studentManagementService.update("12345", studentUpdate);
@@ -221,7 +229,8 @@ class StudentManagementServiceImplTest {
                 "+201109876543"
         );
 
-        when(studentRepository.findById(studentId)).thenReturn(Optional.empty());
+        when(studentRepository.findById(studentId))
+                .thenReturn(Optional.empty());
 
         NotFoundException exception = assertThrows(
                 NotFoundException.class,
