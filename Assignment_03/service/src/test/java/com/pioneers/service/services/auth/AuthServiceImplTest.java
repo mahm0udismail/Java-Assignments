@@ -9,6 +9,7 @@ import com.pioneers.service.model.dtos.requests.StudentSignup;
 import com.pioneers.service.model.entities.Student;
 import com.pioneers.service.repositories.students.StudentRepository;
 import com.pioneers.service.utils.CredentialsHelper;
+import com.pioneers.service.utils.time.TimeHelper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -16,7 +17,6 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.sql.Timestamp;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -85,7 +85,7 @@ class AuthServiceImplTest {
                 () -> authService.registerStudent(signup)
         );
 
-        assertNotNull(ex);
+        assertEquals("Email is already used in system", ex.getMessage());
         verify(studentRepository, never()).save(any());
     }
 
@@ -108,10 +108,11 @@ class AuthServiceImplTest {
         when(studentRepository.findByPhone("+201001234567"))
                 .thenReturn(Optional.of(mock(Student.class)));
 
-        assertThrows(
+        RegisterException ex = assertThrows(
                 RegisterException.class,
                 () -> authService.registerStudent(signup)
         );
+        assertEquals("Phone is already used in system", ex.getMessage());
 
         verify(studentRepository, never()).save(any());
     }
@@ -131,7 +132,7 @@ class AuthServiceImplTest {
                 .phone("+201001234567")
                 .password("hashedPassword123")
                 .isLogin(false)
-                .lastLoginAt(new Timestamp(System.currentTimeMillis()))
+                .lastLoginAt(null)
                 .build();
 
         when(studentRepository.findByEmail("test@test.com"))
@@ -146,6 +147,10 @@ class AuthServiceImplTest {
             String result = authService.loginStudent(studentLogin);
 
             assertEquals("Login successful", result);
+
+            assertTrue(student.isLogin());
+
+            assertNotNull(student.getLastLoginAt());
         }
 
     }
@@ -180,7 +185,7 @@ class AuthServiceImplTest {
                 .phone("+201001234567")
                 .password("hashedPassword123")
                 .isLogin(false)
-                .lastLoginAt(new Timestamp(System.currentTimeMillis()))
+                .lastLoginAt(TimeHelper.currentTimestamp())
                 .build();
 
         when(studentRepository.findByEmail("test@test.com"))
@@ -201,6 +206,32 @@ class AuthServiceImplTest {
         }
     }
 
+    // ---------------- Student already logged in ----------------
+    @Test
+    void testLoginStudentWhenAlreadyLoggedInThenThrowsLoginException() {
+        StudentLogin studentLogin = new StudentLogin("test@test.com", "Password@123");
+
+        Student student = Student.builder()
+                .id("12345")
+                .fullName("Mahmoud Ismail")
+                .email("test@test.com")
+                .phone("+201001234567")
+                .password("hashedPassword123")
+                .isLogin(true)
+                .lastLoginAt(TimeHelper.currentTimestamp())
+                .build();
+
+        when(studentRepository.findByEmail("test@test.com"))
+                .thenReturn(Optional.of(student));
+
+        LoginException exception = assertThrows(
+                LoginException.class,
+                () -> authService.loginStudent(studentLogin)
+        );
+
+        assertEquals("Student with email: test@test.com is already login", exception.getMessage());
+    }
+
     // ---------------- logoutStudent ----------------
     // ---------------- SUCCESS CASE ----------------
     @Test
@@ -214,7 +245,7 @@ class AuthServiceImplTest {
                 .phone("+201001234567")
                 .password("hashedPassword123")
                 .isLogin(true)
-                .lastLoginAt(new Timestamp(System.currentTimeMillis()))
+                .lastLoginAt(TimeHelper.currentTimestamp())
                 .build();
 
         when(studentRepository.findById(studentId))
